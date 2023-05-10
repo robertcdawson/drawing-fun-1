@@ -1,0 +1,19 @@
+main {
+  text-align: center;
+  vertical-align: center;
+  line-height: 100vh;
+}
+
+.material-icons-round.md-34 {
+  font-size: 34px;
+  color: #adadad;
+  padding-top: 4px;
+}
+
+.icon-shadow::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  filter: blur(3px);
+  opacity: 0.8;
+}
