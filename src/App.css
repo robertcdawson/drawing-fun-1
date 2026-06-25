@@ -1,19 +1,139 @@
-main {
-  text-align: center;
-  vertical-align: center;
-  line-height: 100vh;
+.drawing-canvas {
+  background: #ffffff;
 }
 
-.material-icons-round.md-34 {
-  font-size: 34px;
-  color: #adadad;
-  padding-top: 4px;
+/* Icon sizing shared by swatches and action buttons. */
+.material-icons-round {
+  font-size: 32px;
+  line-height: 1;
 }
 
-.icon-shadow::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  filter: blur(3px);
-  opacity: 0.8;
+/* ---- Toolbar: a floating pill that gets out of the way while drawing ---- */
+.toolbar {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: center;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* The tool disappears so the art can appear: fade out while a stroke is drawn,
+   and let touches pass straight through to the canvas. */
+.toolbar--hidden {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+.toolbar-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 28px;
+  background: rgba(40, 40, 40, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* Color swatches (used inside the palette popover) */
+.swatch {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.swatch .material-icons-round {
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.swatch--active .material-icons-round {
+  transform: scale(1.18);
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.9));
+}
+
+/* Action buttons (size, undo, redo, share, clear) */
+.tool-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #d6d6d6;
+  cursor: pointer;
+  border-radius: 12px;
+}
+.tool-btn:disabled {
+  color: #6f6f6f;
+  cursor: default;
+}
+.tool-btn--on {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.tool-divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 26px;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* The size button shows the current brush size as a literal white dot. */
+.size-dot {
+  display: block;
+  border-radius: 50%;
+  background: #e8e8e8;
+}
+
+/* ---- Popovers: appear on demand above the bar, then dismiss ---- */
+.popover {
+  position: fixed;
+  bottom: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 22px;
+  background: rgba(40, 40, 40, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+.color-popover {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  max-width: calc(100vw - 24px);
+}
+.size-popover {
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 14px;
+}
+.size-preview {
+  display: block;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+.size-slider {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 28px;
+  height: 140px;
+  accent-color: #ffffff;
 }
