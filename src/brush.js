@@ -35,6 +35,9 @@ export function drawStroke(ctx, stroke) {
   const pts = stroke.points;
   if (!pts || pts.length === 0) return;
 
+  // An eraser stroke removes existing paint (destination-out → transparent),
+  // revealing the white paper behind. A brush stroke paints normally.
+  ctx.globalCompositeOperation = stroke.erase ? 'destination-out' : 'source-over';
   ctx.strokeStyle = stroke.color;
   ctx.fillStyle = stroke.color;
   ctx.lineCap = 'round';
@@ -46,6 +49,7 @@ export function drawStroke(ctx, stroke) {
     ctx.beginPath();
     ctx.arc(p.x, p.y, Math.max(0.5, p.w / 2), 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
     return;
   }
 
@@ -58,6 +62,7 @@ export function drawStroke(ctx, stroke) {
     ctx.lineTo(b.x, b.y);
     ctx.stroke();
   }
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 // Draw just the most recent segment of the stroke in progress, so live drawing
@@ -65,6 +70,7 @@ export function drawStroke(ctx, stroke) {
 export function drawLastSegment(ctx, stroke) {
   const pts = stroke.points;
   if (!pts || pts.length === 0) return;
+  ctx.globalCompositeOperation = stroke.erase ? 'destination-out' : 'source-over';
   ctx.strokeStyle = stroke.color;
   ctx.fillStyle = stroke.color;
   ctx.lineCap = 'round';
@@ -75,6 +81,7 @@ export function drawLastSegment(ctx, stroke) {
     ctx.beginPath();
     ctx.arc(p.x, p.y, Math.max(0.5, p.w / 2), 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
     return;
   }
   const a = pts[pts.length - 2];
@@ -84,6 +91,7 @@ export function drawLastSegment(ctx, stroke) {
   ctx.moveTo(a.x, a.y);
   ctx.lineTo(b.x, b.y);
   ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 // Render a whole drawing. `scale` lets export re-render at higher resolution

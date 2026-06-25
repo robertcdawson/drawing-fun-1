@@ -15,6 +15,8 @@ const Toolbar = ({
   setSelectedColor,
   baseWidth,
   setBaseWidth,
+  tool,
+  setTool,
   onUndo,
   onRedo,
   canUndo,
@@ -121,7 +123,7 @@ const Toolbar = ({
               type="button"
               key={color}
               className={`swatch${selectedColor === color ? ' swatch--active' : ''}`}
-              onClick={() => { setSelectedColor(color); setPopover(null); }}
+              onClick={() => { setSelectedColor(color); setTool('brush'); setPopover(null); }}
               aria-label={`${color} brush`}
               title={color}
             >
@@ -208,6 +210,21 @@ const Toolbar = ({
             title="Brush size"
           >
             <span className="size-dot" style={{ width: dotSize(baseWidth), height: dotSize(baseWidth) }} />
+          </button>
+
+          {/* Eraser — reveal the paper. A toggle, since it shares the same
+              size and gestures as the brush. */}
+          <button
+            type="button"
+            className={`tool-btn eraser-btn${tool === 'eraser' ? ' tool-btn--on' : ''}`}
+            onClick={() => setTool(tool === 'eraser' ? 'brush' : 'eraser')}
+            aria-label="Eraser"
+            aria-pressed={tool === 'eraser'}
+            title="Eraser"
+          >
+            <svg className="tool-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M16.24 3.56l4.95 4.94c.78.79.78 2.05 0 2.84L12 20.53a4.008 4.008 0 0 1-5.66 0L2.81 17c-.78-.79-.78-2.05 0-2.84l10.6-10.6c.79-.78 2.05-.78 2.83 0M4.22 15.58l3.54 3.53c.78.79 2.04.79 2.83 0l3.53-3.53-4.95-4.95-4.95 4.95z" />
+            </svg>
           </button>
 
           <span className="tool-divider" />

@@ -31,14 +31,17 @@ const DrawingCanvas = () => {
 
   const [selectedColor, setSelectedColor] = useState('black');
   const [baseWidth, setBaseWidth] = useState(DEFAULT_BRUSH);
+  const [tool, setTool] = useState('brush'); // 'brush' | 'eraser'
   const [isDrawing, setIsDrawing] = useState(false);
   // Bumped whenever history changes so the toolbar can reflect undo/redo state.
   const [historyVersion, setHistoryVersion] = useState(0);
 
   const selectedColorRef = useRef(selectedColor);
   const baseWidthRef = useRef(baseWidth);
+  const toolRef = useRef(tool);
   useEffect(() => { selectedColorRef.current = selectedColor; }, [selectedColor]);
   useEffect(() => { baseWidthRef.current = baseWidth; }, [baseWidth]);
+  useEffect(() => { toolRef.current = tool; }, [tool]);
 
   const save = useRef(makeDebouncedSaver()).current;
   const bumpHistory = useCallback(() => setHistoryVersion((v) => v + 1), []);
@@ -163,7 +166,8 @@ const DrawingCanvas = () => {
     const t = e.timeStamp;
     lastPoint.current = null;
     const w = widthForEvent(native, x, y, t);
-    currentStroke.current = { color: selectedColorRef.current, points: [{ x, y, w }] };
+    const erase = toolRef.current === 'eraser';
+    currentStroke.current = { color: selectedColorRef.current, erase, points: [{ x, y, w }] };
     lastPoint.current = { x, y, t, w };
     setIsDrawing(true);
     // Render the initial dot so a tap is felt immediately.
@@ -238,15 +242,28 @@ const DrawingCanvas = () => {
   // refine-later both get a crisp image, not a blurry screen capture.
   const exportPNG = useCallback((scale = 3) => {
     const { w, h } = logicalSize.current;
+    const pw = Math.round(w * scale);
+    const ph = Math.round(h * scale);
+
+    // Render strokes onto a transparent layer first, so eraser strokes
+    // (destination-out) punch through to transparency...
+    const layer = document.createElement('canvas');
+    layer.width = pw;
+    layer.height = ph;
+    const lctx = layer.getContext('2d');
+    lctx.lineCap = 'round';
+    lctx.lineJoin = 'round';
+    renderStrokes(lctx, strokesRef.current, scale);
+
+    // ...then composite that layer over white paper, so erased areas read as
+    // white rather than transparent holes.
     const out = document.createElement('canvas');
-    out.width = Math.round(w * scale);
-    out.height = Math.round(h * scale);
+    out.width = pw;
+    out.height = ph;
     const octx = out.getContext('2d');
     octx.fillStyle = '#ffffff';
-    octx.fillRect(0, 0, out.width, out.height);
-    octx.lineCap = 'round';
-    octx.lineJoin = 'round';
-    renderStrokes(octx, strokesRef.current, scale);
+    octx.fillRect(0, 0, pw, ph);
+    octx.drawImage(layer, 0, 0);
     return out.toDataURL('image/png');
   }, []);
 
@@ -266,6 +283,8 @@ const DrawingCanvas = () => {
         setSelectedColor={setSelectedColor}
         baseWidth={baseWidth}
         setBaseWidth={setBaseWidth}
+        tool={tool}
+        setTool={setTool}
         onUndo={undo}
         onRedo={redo}
         canUndo={strokesRef.current.length > 0}

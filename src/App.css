@@ -4,8 +4,12 @@
 
 /* Icon sizing shared by swatches and action buttons. */
 .material-icons-round {
-  font-size: 32px;
+  font-size: 30px;
   line-height: 1;
+}
+.tool-svg {
+  width: 26px;
+  height: 26px;
 }
 
 /* ---- Toolbar: a floating pill that gets out of the way while drawing ---- */
@@ -30,8 +34,8 @@
 .toolbar-bar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
+  gap: 3px;
+  padding: 5px 9px;
   border-radius: 28px;
   background: rgba(40, 40, 40, 0.82);
   backdrop-filter: blur(12px);
@@ -67,7 +71,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
+  width: 36px;
   height: 44px;
   padding: 0;
   border: none;
