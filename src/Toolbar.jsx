@@ -1,9 +1,13 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import 'material-icons/iconfont/material-icons.css';
 import { MIN_BRUSH, MAX_BRUSH } from './brush';
-import { savePrompt, loadPrompt } from './storage';
+import { savePrompt, loadPrompt, saveRecentColors, loadRecentColors } from './storage';
 
 const COLORS = ['black', 'red', 'yellow', 'blue', 'purple', 'green', 'orange', 'white'];
+const NAMED_HEX = {
+  black: '#000000', red: '#ff0000', yellow: '#ffff00', blue: '#0000ff',
+  purple: '#800080', green: '#008000', orange: '#ffa500', white: '#ffffff',
+};
 
 // Quick style scaffolding for the AI prompt: tapping a chip appends a medium or
 // look. It helps the artist think through the render — the sketch sets the
@@ -33,6 +37,22 @@ const Toolbar = ({
   const [prompt, setPrompt] = useState(() => loadPrompt());
   const [copied, setCopied] = useState(false);
   useEffect(() => { savePrompt(prompt); }, [prompt]);
+
+  // Recently used colors (presets and custom), most-recent first.
+  const [recent, setRecent] = useState(() => loadRecentColors());
+
+  // Single path for picking any color: select it, return to the brush, and
+  // remember it. Keeps preset, custom, and recent picks consistent.
+  const chooseColor = useCallback((color, { close = true } = {}) => {
+    setSelectedColor(color);
+    setTool('brush');
+    setRecent((prev) => {
+      const next = [color, ...prev.filter((c) => c !== color)].slice(0, 8);
+      saveRecentColors(next);
+      return next;
+    });
+    if (close) setPopover(null);
+  }, [setSelectedColor, setTool]);
 
   // The moment a stroke begins, dismiss any open popover so nothing lingers
   // between the artist and the canvas.
@@ -118,20 +138,51 @@ const Toolbar = ({
     <>
       {popover === 'color' && (
         <div className="popover color-popover" role="dialog" aria-label="Colors">
-          {COLORS.map((color) => (
-            <button
-              type="button"
-              key={color}
-              className={`swatch${selectedColor === color ? ' swatch--active' : ''}`}
-              onClick={() => { setSelectedColor(color); setTool('brush'); setPopover(null); }}
-              aria-label={`${color} brush`}
-              title={color}
-            >
-              <span className="material-icons-round" style={{ color: swatchColor(color) }}>
-                water_drop
-              </span>
-            </button>
-          ))}
+          <div className="swatch-grid">
+            {COLORS.map((color) => (
+              <button
+                type="button"
+                key={color}
+                className={`swatch${selectedColor === color ? ' swatch--active' : ''}`}
+                onClick={() => chooseColor(color)}
+                aria-label={`${color} brush`}
+                title={color}
+              >
+                <span className="material-icons-round" style={{ color: swatchColor(color) }}>
+                  water_drop
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="color-extra">
+            {/* Full-spectrum custom color — the 8 presets are a starting palette,
+                not a painter's whole range. */}
+            <label className="custom-swatch" title="Custom color">
+              <input
+                type="color"
+                value={toHex(selectedColor)}
+                onChange={(e) => chooseColor(e.target.value, { close: false })}
+                aria-label="Custom color"
+              />
+            </label>
+
+            {recent.length > 0 && (
+              <div className="recent-row" aria-label="Recent colors">
+                {recent.map((color, i) => (
+                  <button
+                    type="button"
+                    key={`${color}-${i}`}
+                    className={`recent-swatch${selectedColor === color ? ' recent-swatch--active' : ''}`}
+                    style={{ background: swatchColor(color) }}
+                    onClick={() => chooseColor(color)}
+                    aria-label={`Recent color ${color}`}
+                    title={color}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -255,6 +306,13 @@ const Toolbar = ({
 // ring when active) stays visible against the dark pill and white canvas.
 function swatchColor(color) {
   return color === 'white' ? '#fafafa' : color;
+}
+
+// The native color input needs a #rrggbb value; map preset names, pass hex
+// through, and fall back to black for anything unexpected.
+function toHex(color) {
+  if (typeof color === 'string' && color[0] === '#') return color;
+  return NAMED_HEX[color] || '#000000';
 }
 
 // Clamp the little preview dot so very large brushes still fit in the button.

@@ -4,6 +4,7 @@
 
 const KEY = 'drawing-fun:v1';
 const PROMPT_KEY = 'drawing-fun:prompt';
+const RECENT_KEY = 'drawing-fun:recent';
 
 export function saveStrokes(strokes) {
   try {
@@ -49,6 +50,25 @@ export function loadPrompt() {
     return localStorage.getItem(PROMPT_KEY) || '';
   } catch (e) {
     return '';
+  }
+}
+
+// Recently used colors — including custom-mixed ones — so the artist can return
+// to a hue without re-picking it, keeping a consistent palette across a piece.
+export function saveRecentColors(list) {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+  } catch (e) {
+    // Non-fatal — recents are a convenience, not core data.
+  }
+}
+
+export function loadRecentColors() {
+  try {
+    const list = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch (e) {
+    return [];
   }
 }
 
