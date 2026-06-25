@@ -1,8 +1,14 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import 'material-icons/iconfont/material-icons.css';
 import { MIN_BRUSH, MAX_BRUSH } from './brush';
+import { savePrompt, loadPrompt } from './storage';
 
 const COLORS = ['black', 'red', 'yellow', 'blue', 'purple', 'green', 'orange', 'white'];
+
+// Quick style scaffolding for the AI prompt: tapping a chip appends a medium or
+// look. It helps the artist think through the render — the sketch sets the
+// composition, these set the texture and mood the model should fill in.
+const STYLES = ['watercolor', 'oil painting', 'ink wash', 'pencil sketch', 'anime', 'photoreal', '3D render', 'pastel'];
 
 const Toolbar = ({
   selectedColor,
@@ -17,9 +23,14 @@ const Toolbar = ({
   clearCanvas,
   hidden,
 }) => {
-  // One popover at a time keeps the surface calm: 'color', 'size', or null.
+  // One popover at a time keeps the surface calm: 'color', 'size', 'ai', or null.
   const [popover, setPopover] = useState(null);
   const toggle = (name) => setPopover((p) => (p === name ? null : name));
+
+  // The AI prompt travels with the drawing; load it once and persist on change.
+  const [prompt, setPrompt] = useState(() => loadPrompt());
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { savePrompt(prompt); }, [prompt]);
 
   // The moment a stroke begins, dismiss any open popover so nothing lingers
   // between the artist and the canvas.
@@ -57,6 +68,37 @@ const Toolbar = ({
     }
   }, [clearCanvas]);
 
+  const addStyle = useCallback((style) => {
+    setPrompt((p) => {
+      const t = p.trim();
+      if (!t) return style;
+      if (t.toLowerCase().includes(style.toLowerCase())) return p;
+      return `${t.replace(/[,\s]+$/, '')}, ${style}`;
+    });
+  }, []);
+
+  const copyPrompt = useCallback(async () => {
+    if (!prompt.trim()) return;
+    try {
+      await navigator.clipboard.writeText(prompt.trim());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      // Clipboard blocked — the artist can still select the text manually.
+    }
+  }, [prompt]);
+
+  // The handoff: copy the prompt so it's ready to paste, then share the crisp
+  // sketch. Drop the image into any text-to-image / sketch-to-image app and the
+  // prompt is already on the clipboard — the sketch becomes direction, not just
+  // a picture.
+  const handleSendToAI = useCallback(async () => {
+    if (prompt.trim()) {
+      try { await navigator.clipboard.writeText(prompt.trim()); } catch (e) { /* blocked */ }
+    }
+    await handleShare();
+  }, [prompt, handleShare]);
+
   const action = (onClick, icon, label, enabled = true) => (
     <button
       type="button"
@@ -88,6 +130,37 @@ const Toolbar = ({
               </span>
             </button>
           ))}
+        </div>
+      )}
+
+      {popover === 'ai' && (
+        <div className="popover ai-popover" role="dialog" aria-label="Send to AI">
+          <div className="ai-title">Render with AI</div>
+          <textarea
+            className="ai-textarea"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Describe the finished piece — subject, style, mood, medium…"
+            rows={3}
+            aria-label="AI prompt"
+          />
+          <div className="ai-chips">
+            {STYLES.map((style) => (
+              <button type="button" key={style} className="ai-chip" onClick={() => addStyle(style)}>
+                {style}
+              </button>
+            ))}
+          </div>
+          <div className="ai-actions">
+            <button type="button" className="ai-btn ai-btn--primary" onClick={handleSendToAI}>
+              <span className="material-icons-round">ios_share</span>
+              Share sketch + prompt
+            </button>
+            <button type="button" className="ai-btn" onClick={copyPrompt} disabled={!prompt.trim()}>
+              {copied ? 'Copied!' : 'Copy prompt'}
+            </button>
+          </div>
+          <div className="ai-hint">Drop the sketch into any text-to-image app — the prompt is on your clipboard, ready to paste.</div>
         </div>
       )}
 
@@ -141,6 +214,18 @@ const Toolbar = ({
 
           {action(onUndo, 'undo', 'Undo', canUndo)}
           {action(onRedo, 'redo', 'Redo', canRedo)}
+
+          {/* Send to AI — pair the sketch with a prompt for a text-to-image model. */}
+          <button
+            type="button"
+            className={`tool-btn ai-trigger${popover === 'ai' ? ' tool-btn--on' : ''}`}
+            onClick={() => toggle('ai')}
+            aria-label="Render with AI"
+            title="Render with AI"
+          >
+            <span className="material-icons-round">auto_awesome</span>
+          </button>
+
           {action(handleShare, 'ios_share', 'Share or save')}
           {action(handleClear, 'delete_forever', 'Clear drawing')}
         </div>

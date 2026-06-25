@@ -125,6 +125,86 @@
   gap: 14px;
   padding: 16px 14px;
 }
+
+/* ---- AI handoff popover ---- */
+.ai-popover {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: min(330px, calc(100vw - 24px));
+  padding: 14px;
+  color: #f0f0f0;
+}
+.ai-title {
+  font: 600 15px/1.2 -apple-system, system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ai-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  padding: 10px 12px;
+  font: 400 14px/1.4 -apple-system, system-ui, sans-serif;
+}
+.ai-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+.ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ai-chip {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8e8e8;
+  padding: 5px 11px;
+  font: 400 13px/1 -apple-system, system-ui, sans-serif;
+  cursor: pointer;
+}
+.ai-chip:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+.ai-actions {
+  display: flex;
+  gap: 8px;
+}
+.ai-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  padding: 11px 12px;
+  font: 600 14px/1 -apple-system, system-ui, sans-serif;
+  cursor: pointer;
+}
+.ai-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ai-btn .material-icons-round {
+  font-size: 20px;
+}
+.ai-btn--primary {
+  background: #2f6df6;
+  border-color: #2f6df6;
+}
+.ai-hint {
+  font: 400 12px/1.4 -apple-system, system-ui, sans-serif;
+  color: rgba(255, 255, 255, 0.55);
+}
 .size-preview {
   display: block;
   border-radius: 50%;
