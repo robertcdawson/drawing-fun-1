@@ -1,18 +1,16 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import 'material-icons/iconfont/material-icons.css';
 import { MIN_BRUSH, MAX_BRUSH } from './brush';
-import { savePrompt, loadPrompt, saveRecentColors, loadRecentColors } from './storage';
+import { saveRecentColors, loadRecentColors } from './storage';
+import { modLabel } from './keyboard';
+import HelpModal from './HelpModal';
 
 const COLORS = ['black', 'red', 'yellow', 'blue', 'purple', 'green', 'orange', 'white'];
 const NAMED_HEX = {
   black: '#000000', red: '#ff0000', yellow: '#ffff00', blue: '#0000ff',
   purple: '#800080', green: '#008000', orange: '#ffa500', white: '#ffffff',
 };
-
-// Quick style scaffolding for the AI prompt: tapping a chip appends a medium or
-// look. It helps the artist think through the render — the sketch sets the
-// composition, these set the texture and mood the model should fill in.
-const STYLES = ['watercolor', 'oil painting', 'ink wash', 'pencil sketch', 'anime', 'photoreal', '3D render', 'pastel'];
+const SIZE_STEP = 2;
 
 const Toolbar = ({
   selectedColor,
@@ -29,14 +27,11 @@ const Toolbar = ({
   clearCanvas,
   hidden,
 }) => {
-  // One popover at a time keeps the surface calm: 'color', 'size', 'ai', or null.
+  // One popover at a time keeps the surface calm: 'color', 'size', or null.
   const [popover, setPopover] = useState(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const toggle = (name) => setPopover((p) => (p === name ? null : name));
-
-  // The AI prompt travels with the drawing; load it once and persist on change.
-  const [prompt, setPrompt] = useState(() => loadPrompt());
-  const [copied, setCopied] = useState(false);
-  useEffect(() => { savePrompt(prompt); }, [prompt]);
+  const closePopovers = useCallback(() => setPopover(null), []);
 
   // Recently used colors (presets and custom), most-recent first.
   const [recent, setRecent] = useState(() => loadRecentColors());
@@ -61,8 +56,8 @@ const Toolbar = ({
   }, [hidden]);
 
   // Share the drawing as a crisp PNG. The native share sheet is the cheapest
-  // bridge to "send it somewhere else" — Photos, Messages, or a text-to-image
-  // AI app. Falls back to a direct download where sharing files isn't supported.
+  // bridge to "send it somewhere else" — Photos, Messages, or another app.
+  // Falls back to a direct download where sharing files isn't supported.
   const handleShare = useCallback(async () => {
     const dataUrl = exportPNG(3);
     try {
@@ -90,45 +85,137 @@ const Toolbar = ({
     }
   }, [clearCanvas]);
 
-  const addStyle = useCallback((style) => {
-    setPrompt((p) => {
-      const t = p.trim();
-      if (!t) return style;
-      if (t.toLowerCase().includes(style.toLowerCase())) return p;
-      return `${t.replace(/[,\s]+$/, '')}, ${style}`;
+  const adjustSize = useCallback((delta) => {
+    setBaseWidth((w) => Math.min(MAX_BRUSH, Math.max(MIN_BRUSH, w + delta)));
+  }, [setBaseWidth]);
+
+  const openHelp = useCallback(() => {
+    closePopovers();
+    setHelpOpen(true);
+  }, [closePopovers]);
+
+  const closeHelp = useCallback(() => setHelpOpen(false), []);
+
+  const toggleHelp = useCallback(() => {
+    setHelpOpen((open) => {
+      if (!open) closePopovers();
+      return !open;
     });
-  }, []);
+  }, [closePopovers]);
 
-  const copyPrompt = useCallback(async () => {
-    if (!prompt.trim()) return;
-    try {
-      await navigator.clipboard.writeText(prompt.trim());
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch (e) {
-      // Clipboard blocked — the artist can still select the text manually.
-    }
-  }, [prompt]);
+  useEffect(() => {
+    const isEditableTarget = (target) => {
+      if (!target) return false;
+      const tag = target.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+    };
 
-  // The handoff: copy the prompt so it's ready to paste, then share the crisp
-  // sketch. Drop the image into any text-to-image / sketch-to-image app and the
-  // prompt is already on the clipboard — the sketch becomes direction, not just
-  // a picture.
-  const handleSendToAI = useCallback(async () => {
-    if (prompt.trim()) {
-      try { await navigator.clipboard.writeText(prompt.trim()); } catch (e) { /* blocked */ }
-    }
-    await handleShare();
-  }, [prompt, handleShare]);
+    const onKeyDown = (e) => {
+      if (isEditableTarget(e.target)) return;
 
-  const action = (onClick, icon, label, enabled = true) => (
+      const mod = e.metaKey || e.ctrlKey;
+
+      if (e.key === 'Escape') {
+        if (helpOpen) {
+          e.preventDefault();
+          closeHelp();
+          return;
+        }
+        if (popover) {
+          e.preventDefault();
+          closePopovers();
+        }
+        return;
+      }
+
+      if (e.key === '?' && !mod && !e.altKey) {
+        e.preventDefault();
+        toggleHelp();
+        return;
+      }
+
+      if (mod && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          if (canRedo) onRedo();
+        } else if (canUndo) {
+          onUndo();
+        }
+        return;
+      }
+
+      if (mod && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        if (canRedo) onRedo();
+        return;
+      }
+
+      if (mod && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleShare();
+        return;
+      }
+
+      if (mod || e.altKey) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'e':
+          // The toolbar has no separate brush button: the eraser is a toggle,
+          // and turning it off returns to the default brush.
+          e.preventDefault();
+          closePopovers();
+          setTool((t) => (t === 'eraser' ? 'brush' : 'eraser'));
+          break;
+        case 'c':
+          e.preventDefault();
+          setHelpOpen(false);
+          toggle('color');
+          break;
+        case '[':
+          e.preventDefault();
+          adjustSize(-SIZE_STEP);
+          break;
+        case ']':
+          e.preventDefault();
+          adjustSize(SIZE_STEP);
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [
+    adjustSize,
+    canRedo,
+    canUndo,
+    closeHelp,
+    closePopovers,
+    handleShare,
+    helpOpen,
+    onRedo,
+    onUndo,
+    popover,
+    setTool,
+    toggleHelp,
+  ]);
+
+  // Tooltips surface the shortcut (e.g. "Undo (⌘+Z)") while aria-label stays the
+  // clean action name and aria-keyshortcuts carries the machine-readable form.
+  const mod = modLabel();
+  const action = (onClick, icon, label, { enabled = true, hint, ariaKeys } = {}) => (
     <button
       type="button"
       className="tool-btn"
-      onClick={onClick}
+      onClick={() => {
+        closePopovers();
+        onClick();
+      }}
       disabled={!enabled}
       aria-label={label}
-      title={label}
+      aria-keyshortcuts={ariaKeys}
+      title={hint ? `${label} (${hint})` : label}
     >
       <span className="material-icons-round">{icon}</span>
     </button>
@@ -136,6 +223,8 @@ const Toolbar = ({
 
   return (
     <>
+      <HelpModal open={helpOpen} onClose={closeHelp} />
+
       {popover === 'color' && (
         <div className="popover color-popover" role="dialog" aria-label="Colors">
           <div className="swatch-grid">
@@ -186,37 +275,6 @@ const Toolbar = ({
         </div>
       )}
 
-      {popover === 'ai' && (
-        <div className="popover ai-popover" role="dialog" aria-label="Send to AI">
-          <div className="ai-title">Render with AI</div>
-          <textarea
-            className="ai-textarea"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe the finished piece — subject, style, mood, medium…"
-            rows={3}
-            aria-label="AI prompt"
-          />
-          <div className="ai-chips">
-            {STYLES.map((style) => (
-              <button type="button" key={style} className="ai-chip" onClick={() => addStyle(style)}>
-                {style}
-              </button>
-            ))}
-          </div>
-          <div className="ai-actions">
-            <button type="button" className="ai-btn ai-btn--primary" onClick={handleSendToAI}>
-              <span className="material-icons-round">ios_share</span>
-              Share sketch + prompt
-            </button>
-            <button type="button" className="ai-btn" onClick={copyPrompt} disabled={!prompt.trim()}>
-              {copied ? 'Copied!' : 'Copy prompt'}
-            </button>
-          </div>
-          <div className="ai-hint">Drop the sketch into any text-to-image app — the prompt is on your clipboard, ready to paste.</div>
-        </div>
-      )}
-
       {popover === 'size' && (
         <div className="popover size-popover" role="dialog" aria-label="Brush size">
           <span
@@ -243,9 +301,13 @@ const Toolbar = ({
           <button
             type="button"
             className={`tool-btn color-btn${popover === 'color' ? ' tool-btn--on' : ''}`}
-            onClick={() => toggle('color')}
+            onClick={() => {
+              setHelpOpen(false);
+              toggle('color');
+            }}
             aria-label="Color"
-            title="Color"
+            aria-keyshortcuts="C"
+            title="Color (C)"
           >
             <span className="material-icons-round" style={{ color: swatchColor(selectedColor) }}>
               water_drop
@@ -256,9 +318,13 @@ const Toolbar = ({
           <button
             type="button"
             className={`tool-btn size-btn${popover === 'size' ? ' tool-btn--on' : ''}`}
-            onClick={() => toggle('size')}
+            onClick={() => {
+              setHelpOpen(false);
+              toggle('size');
+            }}
             aria-label="Brush size"
-            title="Brush size"
+            aria-keyshortcuts="[ ]"
+            title="Brush size ([ / ])"
           >
             <span className="size-dot" style={{ width: dotSize(baseWidth), height: dotSize(baseWidth) }} />
           </button>
@@ -268,10 +334,14 @@ const Toolbar = ({
           <button
             type="button"
             className={`tool-btn eraser-btn${tool === 'eraser' ? ' tool-btn--on' : ''}`}
-            onClick={() => setTool(tool === 'eraser' ? 'brush' : 'eraser')}
+            onClick={() => {
+              closePopovers();
+              setTool(tool === 'eraser' ? 'brush' : 'eraser');
+            }}
             aria-label="Eraser"
             aria-pressed={tool === 'eraser'}
-            title="Eraser"
+            aria-keyshortcuts="E"
+            title="Eraser (E)"
           >
             <svg className="tool-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M16.24 3.56l4.95 4.94c.78.79.78 2.05 0 2.84L12 20.53a4.008 4.008 0 0 1-5.66 0L2.81 17c-.78-.79-.78-2.05 0-2.84l10.6-10.6c.79-.78 2.05-.78 2.83 0M4.22 15.58l3.54 3.53c.78.79 2.04.79 2.83 0l3.53-3.53-4.95-4.95-4.95 4.95z" />
@@ -280,22 +350,33 @@ const Toolbar = ({
 
           <span className="tool-divider" />
 
-          {action(onUndo, 'undo', 'Undo', canUndo)}
-          {action(onRedo, 'redo', 'Redo', canRedo)}
+          {action(onUndo, 'undo', 'Undo', {
+            enabled: canUndo,
+            hint: `${mod}+Z`,
+            ariaKeys: 'Meta+Z Control+Z',
+          })}
+          {action(onRedo, 'redo', 'Redo', {
+            enabled: canRedo,
+            hint: `${mod}+Shift+Z`,
+            ariaKeys: 'Meta+Shift+Z Control+Shift+Z Control+Y',
+          })}
 
-          {/* Send to AI — pair the sketch with a prompt for a text-to-image model. */}
+          {action(handleShare, 'ios_share', 'Share or save', {
+            hint: `${mod}+S`,
+            ariaKeys: 'Meta+S Control+S',
+          })}
+          {action(handleClear, 'delete_forever', 'Clear drawing')}
+
           <button
             type="button"
-            className={`tool-btn ai-trigger${popover === 'ai' ? ' tool-btn--on' : ''}`}
-            onClick={() => toggle('ai')}
-            aria-label="Render with AI"
-            title="Render with AI"
+            className={`tool-btn help-btn${helpOpen ? ' tool-btn--on' : ''}`}
+            onClick={openHelp}
+            aria-label="Keyboard shortcuts"
+            aria-keyshortcuts="?"
+            title="Keyboard shortcuts (?)"
           >
-            <span className="material-icons-round">auto_awesome</span>
+            <span className="material-icons-round">help_outline</span>
           </button>
-
-          {action(handleShare, 'ios_share', 'Share or save')}
-          {action(handleClear, 'delete_forever', 'Clear drawing')}
         </div>
       </div>
     </>
