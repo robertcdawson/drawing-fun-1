@@ -7,7 +7,7 @@
 
 export const MIN_BRUSH = 2;
 export const MAX_BRUSH = 60;
-export const DEFAULT_BRUSH = 8;
+export const DEFAULT_BRUSH = 6;
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 

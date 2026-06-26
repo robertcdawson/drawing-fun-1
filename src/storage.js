@@ -3,7 +3,6 @@
 // drawing back exactly as it was left — the foundation of "refine later".
 
 const KEY = 'drawing-fun:v1';
-const PROMPT_KEY = 'drawing-fun:prompt';
 const RECENT_KEY = 'drawing-fun:recent';
 
 export function saveStrokes(strokes) {
@@ -31,25 +30,6 @@ export function clearStrokes() {
     localStorage.removeItem(KEY);
   } catch (e) {
     // Ignore — there's nothing more we can do.
-  }
-}
-
-// The AI prompt is the artist's intent for how a text-to-image model should
-// render the sketch. Persisting it means the idea — composition AND direction —
-// travels together and survives a refresh, just like the strokes.
-export function savePrompt(text) {
-  try {
-    localStorage.setItem(PROMPT_KEY, text);
-  } catch (e) {
-    // Storage unavailable — the prompt still works in-memory this session.
-  }
-}
-
-export function loadPrompt() {
-  try {
-    return localStorage.getItem(PROMPT_KEY) || '';
-  } catch (e) {
-    return '';
   }
 }
 
