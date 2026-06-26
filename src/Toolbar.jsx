@@ -2,6 +2,7 @@ import React, { useCallback, useState, useEffect } from 'react';
 import 'material-icons/iconfont/material-icons.css';
 import { MIN_BRUSH, MAX_BRUSH } from './brush';
 import { saveRecentColors, loadRecentColors } from './storage';
+import { modLabel } from './keyboard';
 import HelpModal from './HelpModal';
 
 const COLORS = ['black', 'red', 'yellow', 'blue', 'purple', 'green', 'orange', 'white'];
@@ -158,15 +159,12 @@ const Toolbar = ({
       if (mod || e.altKey) return;
 
       switch (e.key.toLowerCase()) {
-        case 'b':
-          e.preventDefault();
-          closePopovers();
-          setTool('brush');
-          break;
         case 'e':
+          // The toolbar has no separate brush button: the eraser is a toggle,
+          // and turning it off returns to the default brush.
           e.preventDefault();
           closePopovers();
-          setTool('eraser');
+          setTool((t) => (t === 'eraser' ? 'brush' : 'eraser'));
           break;
         case 'c':
           e.preventDefault();
@@ -203,7 +201,10 @@ const Toolbar = ({
     toggleHelp,
   ]);
 
-  const action = (onClick, icon, label, enabled = true) => (
+  // Tooltips surface the shortcut (e.g. "Undo (⌘+Z)") while aria-label stays the
+  // clean action name and aria-keyshortcuts carries the machine-readable form.
+  const mod = modLabel();
+  const action = (onClick, icon, label, { enabled = true, hint, ariaKeys } = {}) => (
     <button
       type="button"
       className="tool-btn"
@@ -213,7 +214,8 @@ const Toolbar = ({
       }}
       disabled={!enabled}
       aria-label={label}
-      title={label}
+      aria-keyshortcuts={ariaKeys}
+      title={hint ? `${label} (${hint})` : label}
     >
       <span className="material-icons-round">{icon}</span>
     </button>
@@ -304,7 +306,8 @@ const Toolbar = ({
               toggle('color');
             }}
             aria-label="Color"
-            title="Color"
+            aria-keyshortcuts="C"
+            title="Color (C)"
           >
             <span className="material-icons-round" style={{ color: swatchColor(selectedColor) }}>
               water_drop
@@ -320,7 +323,8 @@ const Toolbar = ({
               toggle('size');
             }}
             aria-label="Brush size"
-            title="Brush size"
+            aria-keyshortcuts="[ ]"
+            title="Brush size ([ / ])"
           >
             <span className="size-dot" style={{ width: dotSize(baseWidth), height: dotSize(baseWidth) }} />
           </button>
@@ -336,7 +340,8 @@ const Toolbar = ({
             }}
             aria-label="Eraser"
             aria-pressed={tool === 'eraser'}
-            title="Eraser"
+            aria-keyshortcuts="E"
+            title="Eraser (E)"
           >
             <svg className="tool-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M16.24 3.56l4.95 4.94c.78.79.78 2.05 0 2.84L12 20.53a4.008 4.008 0 0 1-5.66 0L2.81 17c-.78-.79-.78-2.05 0-2.84l10.6-10.6c.79-.78 2.05-.78 2.83 0M4.22 15.58l3.54 3.53c.78.79 2.04.79 2.83 0l3.53-3.53-4.95-4.95-4.95 4.95z" />
@@ -345,10 +350,21 @@ const Toolbar = ({
 
           <span className="tool-divider" />
 
-          {action(onUndo, 'undo', 'Undo', canUndo)}
-          {action(onRedo, 'redo', 'Redo', canRedo)}
+          {action(onUndo, 'undo', 'Undo', {
+            enabled: canUndo,
+            hint: `${mod}+Z`,
+            ariaKeys: 'Meta+Z Control+Z',
+          })}
+          {action(onRedo, 'redo', 'Redo', {
+            enabled: canRedo,
+            hint: `${mod}+Shift+Z`,
+            ariaKeys: 'Meta+Shift+Z Control+Shift+Z Control+Y',
+          })}
 
-          {action(handleShare, 'ios_share', 'Share or save')}
+          {action(handleShare, 'ios_share', 'Share or save', {
+            hint: `${mod}+S`,
+            ariaKeys: 'Meta+S Control+S',
+          })}
           {action(handleClear, 'delete_forever', 'Clear drawing')}
 
           <button
@@ -356,7 +372,8 @@ const Toolbar = ({
             className={`tool-btn help-btn${helpOpen ? ' tool-btn--on' : ''}`}
             onClick={openHelp}
             aria-label="Keyboard shortcuts"
-            title="Keyboard shortcuts"
+            aria-keyshortcuts="?"
+            title="Keyboard shortcuts (?)"
           >
             <span className="material-icons-round">help_outline</span>
           </button>

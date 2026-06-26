@@ -1,30 +1,20 @@
 import React, { useEffect, useRef } from 'react';
+import { formatKey } from './keyboard';
 
+// Each shortcut lists one or more `combos`. Keys within a combo are pressed
+// together (joined with "+"); separate combos are alternatives (joined with
+// "or"), so the modal never implies a chord that isn't real.
 const SHORTCUTS = [
-  { keys: ['B'], description: 'Select brush' },
-  { keys: ['E'], description: 'Select eraser' },
-  { keys: ['C'], description: 'Toggle color palette' },
-  { keys: ['[', ']'], description: 'Decrease / increase brush size' },
-  { keys: ['mod', 'Z'], description: 'Undo' },
-  { keys: ['mod', 'Shift', 'Z'], description: 'Redo' },
-  { keys: ['Ctrl', 'Y'], description: 'Redo (Windows)' },
-  { keys: ['mod', 'S'], description: 'Share or save drawing' },
-  { keys: ['?'], description: 'Show keyboard shortcuts' },
-  { keys: ['Esc'], description: 'Close popovers and dialogs' },
+  { combos: [['E']], description: 'Toggle eraser' },
+  { combos: [['C']], description: 'Toggle color palette' },
+  { combos: [['[']], description: 'Decrease brush size' },
+  { combos: [[']']], description: 'Increase brush size' },
+  { combos: [['mod', 'Z']], description: 'Undo' },
+  { combos: [['mod', 'Shift', 'Z'], ['Ctrl', 'Y']], description: 'Redo' },
+  { combos: [['mod', 'S']], description: 'Share or save drawing' },
+  { combos: [['?']], description: 'Show keyboard shortcuts' },
+  { combos: [['Esc']], description: 'Close popovers and dialogs' },
 ];
-
-function isApplePlatform() {
-  if (typeof navigator === 'undefined') return false;
-  return /Mac|iPhone|iPad|iPod/.test(navigator.platform)
-    || (navigator.userAgentData?.platform === 'macOS');
-}
-
-function formatKey(key) {
-  if (key === 'mod') return isApplePlatform() ? '⌘' : 'Ctrl';
-  if (key === 'Shift') return 'Shift';
-  if (key === 'Esc') return 'Esc';
-  return key;
-}
 
 const HelpModal = ({ open, onClose }) => {
   const dialogRef = useRef(null);
@@ -69,13 +59,18 @@ const HelpModal = ({ open, onClose }) => {
           </button>
         </div>
         <ul className="shortcut-list">
-          {SHORTCUTS.map(({ keys, description }) => (
+          {SHORTCUTS.map(({ combos, description }) => (
             <li key={description} className="shortcut-row">
               <span className="shortcut-keys">
-                {keys.map((key, index) => (
-                  <React.Fragment key={`${description}-${key}-${index}`}>
-                    {index > 0 && <span className="shortcut-sep">+</span>}
-                    <kbd className="shortcut-kbd">{formatKey(key)}</kbd>
+                {combos.map((combo, comboIndex) => (
+                  <React.Fragment key={`${description}-combo-${comboIndex}`}>
+                    {comboIndex > 0 && <span className="shortcut-or">or</span>}
+                    {combo.map((key, keyIndex) => (
+                      <React.Fragment key={`${description}-${comboIndex}-${key}-${keyIndex}`}>
+                        {keyIndex > 0 && <span className="shortcut-sep">+</span>}
+                        <kbd className="shortcut-kbd">{formatKey(key)}</kbd>
+                      </React.Fragment>
+                    ))}
                   </React.Fragment>
                 ))}
               </span>
